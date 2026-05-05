@@ -6,9 +6,10 @@ enableCORS = false
 [browser]
 gatherUsageStats = false
 
+# Pro Talent brand theme — red primary, light blue/grey secondary
 [theme]
-primaryColor = "#0070C0"
+primaryColor = "#C8102E"
 backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#1F1F1F"
+secondaryBackgroundColor = "#F5F7FA"
+textColor = "#1F2937"
 font = "sans serif"
