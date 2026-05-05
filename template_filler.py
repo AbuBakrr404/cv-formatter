@@ -115,10 +115,37 @@ def _find_paragraph_with_token(doc: DocxDocument, token: str):
     return None
 
 
-def _insert_paragraph_after(paragraph, text: str) -> Paragraph:
+def _insert_paragraph_after(paragraph, text: str, force_bold=None) -> Paragraph:
     """
     Insert a new paragraph after the given one, copying its formatting (including bullet style).
+
+    Critical: when we add the new text as a fresh run, that run has no explicit
+    font formatting and inherits from the paragraph style defaults — which often
+    renders as a different font than the rest of the document. We work around
+    this by capturing the font properties of the source paragraph's first run
+    and applying them to the newly created run.
+
+    Parameters
+    ----------
+    force_bold: optional True/False to override the bold inherited from the
+        source paragraph. Useful when the source paragraph is bold (e.g. a
+        "Name:" header) but subsequent lines should be regular weight.
     """
+    # Capture the source paragraph's run-level font formatting BEFORE we deepcopy
+    # (we need the live formatting from the original, not the stripped copy).
+    source_font_name = None
+    source_font_size = None
+    source_font_bold = None
+    source_font_italic = None
+    if paragraph.runs:
+        first_run = paragraph.runs[0]
+        if first_run.font.name:
+            source_font_name = first_run.font.name
+        if first_run.font.size:
+            source_font_size = first_run.font.size
+        source_font_bold = first_run.font.bold
+        source_font_italic = first_run.font.italic
+
     new_p = deepcopy(paragraph._element)
 
     # Clear runs in the copy
@@ -131,7 +158,20 @@ def _insert_paragraph_after(paragraph, text: str) -> Paragraph:
     # Wrap in Paragraph object and add the text
     new_para = Paragraph(new_p, paragraph._parent)
     if text:
-        new_para.add_run(text)
+        new_run = new_para.add_run(text)
+        # Apply the source paragraph's explicit font formatting so the new run
+        # doesn't fall back to inherited document defaults.
+        if source_font_name:
+            new_run.font.name = source_font_name
+        if source_font_size:
+            new_run.font.size = source_font_size
+        # Bold: caller can force a value, otherwise inherit from source
+        if force_bold is not None:
+            new_run.font.bold = force_bold
+        elif source_font_bold is not None:
+            new_run.font.bold = source_font_bold
+        if source_font_italic is not None:
+            new_run.font.italic = source_font_italic
     return new_para
 
 
@@ -205,7 +245,10 @@ def _expand_text_block_token(doc: DocxDocument, token: str, lines: list[str]) ->
 
     last_inserted = paragraph
     for line in lines[1:]:
-        last_inserted = _insert_paragraph_after(last_inserted, line)
+        # For text-block expansions like references, the source paragraph's
+        # first run is often bold (e.g. "Name:" line). Subsequent lines
+        # (Company, Phone) should be regular weight.
+        last_inserted = _insert_paragraph_after(last_inserted, line, force_bold=False)
 
 
 def _format_reference_lines(reference: dict) -> list[str]:
