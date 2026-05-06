@@ -57,7 +57,7 @@ st.set_page_config(
 
 LIGHT_CSS = """
 <style>
-    .block-container { padding-top: 1.5rem; }
+    .block-container { padding-top: 3rem; }
     .pt-header-row {
         display: flex;
         align-items: center;
