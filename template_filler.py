@@ -319,6 +319,7 @@ def fill_template(
 
     simple_replacements = {
         "{{candidate_first_name}}": first_name,
+	"{{candidate_full_name}}": f"{first_name} {surname}".strip(),
         "{{first_name}}": first_name,
         "{{surname}}": surname,
         "{{identity_number}}": _safe_str(candidate_data.get("identity_number")),
