@@ -21,6 +21,7 @@ import traceback
 
 import streamlit as st
 from dotenv import load_dotenv
+from supabase import create_client, Client
 
 from cv_parser import extract_cv_text
 from ai_extractor import extract_candidate_info
@@ -137,23 +138,33 @@ LOGO_SRC = _logo_data_uri()
 # Password gate — simple and reliable
 # ---------------------------------------------------------------------------
 
-def check_password() -> bool:
-    expected_password = os.getenv("APP_PASSWORD")
+@st.cache_resource
+def init_supabase() -> Client:
+    """Initialize Supabase client (cached so we don't reconnect on every rerun)."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        st.error("Server configuration error: Supabase credentials are not set.")
+        st.stop()
+    return create_client(url, key)
 
-    if not expected_password:
-        return True  # No password configured — local dev mode
 
-    if st.session_state.get("authenticated"):
+def check_login() -> bool:
+    """Returns True if user is logged in. Otherwise shows login UI and returns False."""
+    supabase = init_supabase()
+
+    # Already logged in this session
+    if st.session_state.get("supabase_user"):
         return True
 
+    # Show login UI
     logo_html = f'<img src="{LOGO_SRC}" alt="Pro Talent">' if LOGO_SRC else ""
-
     st.markdown(
         f"""
         <div class="pt-login-wrap">
             {logo_html}
             <h1>Pro Talent CV Formatter</h1>
-            <p>Sign in with the team password to continue</p>
+            <p>Sign in with your work email</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -162,32 +173,31 @@ def check_password() -> bool:
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
         with st.form("login_form"):
-            entered = st.text_input(
-                "Team password",
-                type="password",
-                label_visibility="collapsed",
-                placeholder="Team password",
-            )
-            submitted = st.form_submit_button(
-                "Sign in", type="primary", use_container_width=True
-            )
-
+            email = st.text_input("Email", placeholder="you@protalent.co.za")
+            password = st.text_input("Password", type="password", placeholder="Your password")
+            submitted = st.form_submit_button("Sign in", type="primary", use_container_width=True)
             if submitted:
-                if entered == expected_password:
-                    st.session_state["authenticated"] = True
-                    st.rerun()
-                else:
-                    st.error("Incorrect password. Please try again.")
-
+                try:
+                    response = supabase.auth.sign_in_with_password({
+                        "email": email,
+                        "password": password,
+                    })
+                    if response.user:
+                        st.session_state["supabase_user"] = {
+                            "email": response.user.email,
+                            "id": response.user.id,
+                        }
+                        st.rerun()
+                    else:
+                        st.error("Login failed. Please check your email and password.")
+                except Exception:
+                    st.error("Incorrect email or password.")
         st.caption(
             "For Pro Talent / Pro Appointments use only. "
-            "Contact your team lead if you don't have the password."
+            "Contact your team lead if you need a password reset."
         )
-
     return False
-
-
-if not check_password():
+if not check_login():
     st.stop()
 
 
@@ -251,7 +261,11 @@ with st.sidebar:
     st.divider()
 
     if st.button("Sign out", use_container_width=True):
-        st.session_state.pop("authenticated", None)
+        try:
+            init_supabase().auth.sign_out()
+        except Exception:
+            pass
+        st.session_state.pop("supabase_user", None)
         st.rerun()
 
 
