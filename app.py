@@ -117,7 +117,107 @@ LIGHT_CSS = """
 </style>
 """
 
+# Apply theme based on session state
+_theme_choice = st.session_state.get("app_theme", "light")
+DARK_OVERRIDE_CSS = """
+<style>
+    /* Page background and main text */
+    body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        background-color: #1F2937 !important;
+        color: #F3F4F6 !important;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #111827 !important;
+    }
+    .pt-header-name { color: #F3F4F6 !important; }
+    .pt-header-tagline { color: #9CA3AF !important; }
+    .pt-footer { color: #6B7280 !important; }
+    .stMarkdown, .stText, label, p, h1, h2, h3, h4 {
+        color: #F3F4F6 !important;
+    }
+
+    /* File uploader (the "Drop CVs here" + Upload button area) */
+    [data-testid="stFileUploader"] section {
+        background-color: #374151 !important;
+        border: 1px dashed #6B7280 !important;
+    }
+    [data-testid="stFileUploader"] section button {
+        background-color: #4B5563 !important;
+        color: #F3F4F6 !important;
+        border: 1px solid #6B7280 !important;
+    }
+    [data-testid="stFileUploader"] section button:hover {
+        background-color: #6B7280 !important;
+    }
+    [data-testid="stFileUploader"] small,
+    [data-testid="stFileUploader"] span,
+    [data-testid="stFileUploaderDropzoneInstructions"] small,
+    [data-testid="stFileUploaderDropzoneInstructions"] span,
+    [data-testid="stFileUploaderDropzoneInstructions"] div {
+        color: #F3F4F6 !important;
+    }
+    [data-testid="stFileUploaderFile"] {
+        background-color: #374151 !important;
+        color: #F3F4F6 !important;
+    }
+
+    /* Primary buttons (Process all CVs, Sign in, Download all) */
+    .stButton button[kind="primary"], .stDownloadButton button[kind="primary"] {
+        background-color: #C8102E !important;
+        color: #FFFFFF !important;
+        border: none !important;
+    }
+    .stButton button[kind="primary"]:hover, .stDownloadButton button[kind="primary"]:hover {
+        background-color: #A00C24 !important;
+    }
+
+    /* Secondary buttons (Sign out, Clear results, theme toggle) */
+    .stButton button:not([kind="primary"]), .stDownloadButton button:not([kind="primary"]) {
+        background-color: #374151 !important;
+        color: #F3F4F6 !important;
+        border: 1px solid #4B5563 !important;
+    }
+    .stButton button:not([kind="primary"]):hover, .stDownloadButton button:not([kind="primary"]):hover {
+        background-color: #4B5563 !important;
+    }
+
+    /* Disabled buttons */
+    .stButton button:disabled, .stDownloadButton button:disabled {
+        background-color: #1F2937 !important;
+        color: #6B7280 !important;
+        border: 1px solid #374151 !important;
+    }
+
+    /* Text inputs (login form) */
+    [data-testid="stTextInput"] input {
+        background-color: #374151 !important;
+        color: #F3F4F6 !important;
+        border: 1px solid #4B5563 !important;
+    }
+
+    /* Expander headers (candidate result cards) */
+    [data-testid="stExpander"] {
+        background-color: #1F2937 !important;
+        border: 1px solid #374151 !important;
+    }
+    [data-testid="stExpander"] summary {
+        color: #F3F4F6 !important;
+    }
+
+    /* Success / warning / error message boxes */
+    [data-testid="stAlert"] {
+        background-color: #374151 !important;
+    }
+
+    /* Captions and small grey text */
+    [data-testid="stCaptionContainer"], .stCaption {
+        color: #9CA3AF !important;
+    }
+</style>
+"""
 st.markdown(LIGHT_CSS, unsafe_allow_html=True)
+if _theme_choice == "dark":
+    st.markdown(DARK_OVERRIDE_CSS, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -240,19 +340,16 @@ else:
 # ---------------------------------------------------------------------------
 
 with st.sidebar:
-    st.subheader("Template")
-    custom_template = st.file_uploader(
-        "Upload custom template (.docx)",
-        type=["docx"],
-        help="Optional. Upload your own .docx template with {{placeholder}} tokens.",
-    )
-    if custom_template:
-        st.success("Custom template loaded")
-    else:
-        st.caption("Using default Pro Talent template")
+    # Theme toggle
+    current_theme = st.session_state.get("app_theme", "light")
+    theme_label = "🌙 Dark mode" if current_theme == "light" else "☀️ Light mode"
+    if st.button(theme_label, use_container_width=True):
+        st.session_state["app_theme"] = "dark" if current_theme == "light" else "light"
+        st.rerun()
 
     st.divider()
 
+with st.sidebar:
     st.subheader("Quick tips")
     st.caption("• Up to 20 CVs per batch")
     st.caption("• PDF and DOCX supported")
@@ -301,13 +398,13 @@ if not uploaded_cvs:
 # ---------------------------------------------------------------------------
 
 def resolve_template_path() -> Path:
-    if custom_template:
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
-        tmp.write(custom_template.getvalue())
-        tmp.close()
-        return Path(tmp.name)
     return DEFAULT_TEMPLATE
 
+
+# ---------------------------------------------------------------------------
+# Processing — runs only when the user clicks Process all CVs
+# Results are saved to session state so they survive reruns from download clicks
+# ---------------------------------------------------------------------------
 
 if process_clicked and uploaded_cvs:
     template_path = resolve_template_path()
@@ -344,7 +441,7 @@ if process_clicked and uploaded_cvs:
                 counter += 1
 
             fill_template(template_path, data, output_path)
-            results.append((cv_file.name, output_path, data, None))
+            results.append((cv_file.name, str(output_path), data, None))
 
         except Exception as e:
             results.append((cv_file.name, None, None, f"{type(e).__name__}: {e}"))
@@ -352,19 +449,29 @@ if process_clicked and uploaded_cvs:
 
     progress.progress(1.0, text="Done")
 
-    # ---- Results ----
+    # Save to session state — survives reruns triggered by download clicks
+    st.session_state["processing_results"] = results
+
+
+# ---------------------------------------------------------------------------
+# Display results — reads from session state so persists across reruns
+# ---------------------------------------------------------------------------
+
+stored_results = st.session_state.get("processing_results", [])
+
+if stored_results:
     st.divider()
 
-    successes = [r for r in results if r[3] is None]
-    failures = [r for r in results if r[3] is not None]
+    successes = [r for r in stored_results if r[3] is None]
+    failures = [r for r in stored_results if r[3] is not None]
 
     if successes:
-        st.success(f"Successfully processed {len(successes)} of {len(results)} CVs")
+        st.success(f"Successfully processed {len(successes)} of {len(stored_results)} CVs")
 
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             for _, output_path, _, _ in successes:
-                zf.write(output_path, arcname=output_path.name)
+                zf.write(output_path, arcname=Path(output_path).name)
 
         st.download_button(
             label=f"Download all {len(successes)} profiles (ZIP)",
@@ -412,19 +519,21 @@ if process_clicked and uploaded_cvs:
                         st.download_button(
                             label="Download this profile",
                             data=f.read(),
-                            file_name=output_path.name,
+                            file_name=Path(output_path).name,
                             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            key=f"dl_{output_path.name}",
+                            key=f"dl_{Path(output_path).name}",
                         )
-                    with st.popover("View full extraction"):
-                        st.json(data)
+
+        # Clear results button — for when user wants to start a fresh batch
+        if st.button("Clear results"):
+            st.session_state.pop("processing_results", None)
+            st.rerun()
 
     if failures:
         st.error(f"{len(failures)} CV(s) failed to process")
         for cv_name, _, _, error in failures:
             with st.expander(f"Failed: {cv_name}"):
                 st.code(error)
-
 
 # ---------------------------------------------------------------------------
 # Footer
