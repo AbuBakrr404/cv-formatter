@@ -194,13 +194,44 @@ DARK_OVERRIDE_CSS = """
         color: #F3F4F6 !important;
         border: 1px solid #4B5563 !important;
     }
+    /* Show/hide password eye icon button */
+    [data-testid="stTextInput"] button {
+        background-color: #4B5563 !important;
+        color: #F3F4F6 !important;
+        border: 1px solid #4B5563 !important;
+    }
+    [data-testid="stTextInput"] button:hover {
+        background-color: #6B7280 !important;
+    }
+    [data-testid="stTextInput"] button svg {
+        fill: #F3F4F6 !important;
+        color: #F3F4F6 !important;
+    }
+    [data-testid="stTextInput"] input::placeholder {
+        color: #9CA3AF !important;
+        opacity: 1 !important;
+    }
+    [data-testid="stTextInput"] input::-webkit-input-placeholder {
+        color: #9CA3AF !important;
+        opacity: 1 !important;
+    }
 
     /* Expander headers (candidate result cards) */
     [data-testid="stExpander"] {
         background-color: #1F2937 !important;
         border: 1px solid #374151 !important;
     }
-    [data-testid="stExpander"] summary {
+    [data-testid="stExpander"] summary,
+    [data-testid="stExpander"] summary p,
+    [data-testid="stExpander"] summary span,
+    [data-testid="stExpander"] details summary {
+        color: #F3F4F6 !important;
+        background-color: #374151 !important;
+    }
+    [data-testid="stExpander"] details {
+        background-color: #1F2937 !important;
+    }
+    [data-testid="stExpanderToggleIcon"] {
         color: #F3F4F6 !important;
     }
 
