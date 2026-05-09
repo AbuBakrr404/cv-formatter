@@ -48,7 +48,7 @@ st.set_page_config(
     page_title="Pro Talent · CV Formatter",
     page_icon=str(LOGO_PATH) if LOGO_PATH.exists() else "📄",
     layout="centered",
-    initial_sidebar_state="auto",
+    initial_sidebar_state="expanded",
 )
 
 
@@ -244,7 +244,35 @@ DARK_OVERRIDE_CSS = """
     [data-testid="stCaptionContainer"], .stCaption {
         color: #9CA3AF !important;
     }
-</style>
+    /* Sidebar collapse/expand arrows — make them visible in dark mode */
+    [data-testid="stSidebarCollapsedControl"],
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="collapsedControl"],
+    button[kind="header"],
+    [data-testid="stSidebarHeader"] button,
+    [data-testid="stSidebar"] button[kind="header"] {
+        background-color: #4B5563 !important;
+        border: 1px solid #6B7280 !important;
+        border-radius: 6px !important;
+        opacity: 1 !important;
+    }
+    [data-testid="stSidebarCollapsedControl"] svg,
+    [data-testid="stSidebarCollapseButton"] svg,
+    [data-testid="collapsedControl"] svg,
+    button[kind="header"] svg,
+    [data-testid="stSidebarHeader"] button svg,
+    [data-testid="stSidebar"] button[kind="header"] svg {
+        fill: #FFFFFF !important;
+        color: #FFFFFF !important;
+        opacity: 1 !important;
+    }
+    [data-testid="stSidebarCollapsedControl"]:hover,
+    [data-testid="stSidebarCollapseButton"]:hover,
+    [data-testid="collapsedControl"]:hover,
+    button[kind="header"]:hover {
+        background-color: #6B7280 !important;
+}
+    </style>
 """
 st.markdown(LIGHT_CSS, unsafe_allow_html=True)
 if _theme_choice == "dark":
