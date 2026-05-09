@@ -387,7 +387,7 @@ def check_login() -> bool:
                     st.error("Incorrect email or password.")
         st.caption(
             "For Pro Talent / Pro Appointments use only. "
-            "Contact your team lead if you need a password reset."
+            "Contact your team leader if you need a password reset."
         )
     return False
 if not check_login():
